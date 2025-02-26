@@ -1,36 +1,54 @@
-import { promises as fs } from "fs"
-import { NextResponse } from "next/server"
-import path from "path"
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/app/api/auth/auth.config"
+// File: app/api/certificates/[id]/image/route.ts
 
-const dataDirectory = path.join(process.cwd(), "data")
+import { promises as fs } from "fs";
+import { NextResponse } from "next/server";
+import path from "path";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/auth.config";
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions)
-  if (!session || !session.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+// Path to the data directory
+const dataDirectory = path.join(process.cwd(), "data");
 
-  const certificateId = params.id
-
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    const certificateData = await fs.readFile(path.join(dataDirectory, "certificates.json"), "utf8")
-    const certificates = JSON.parse(certificateData || "[]")
-    const certificate = certificates.find((cert: any) => cert.id === certificateId)
-
-    if (!certificate || certificate.userId !== session.user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Check user session
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const imageBuffer = Buffer.from(certificate.imageData, "base64")
+    const { id: certificateId } = params;
+
+    // Read certificates data
+    const certificateData = await fs.readFile(
+      path.join(dataDirectory, "certificates.json"),
+      "utf8"
+    );
+
+    const certificates = JSON.parse(certificateData || "[]");
+    const certificate = certificates.find(
+      (cert: { id: string; userId: string }) =>
+        cert.id === certificateId && cert.userId === session.user.id
+    );
+
+    if (!certificate) {
+      return NextResponse.json({ error: "Certificate not found or unauthorized" }, { status: 404 });
+    }
+
+    // Convert base64 to image buffer
+    const imageBuffer = Buffer.from(certificate.imageData, "base64");
+
     return new NextResponse(imageBuffer, {
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "private, max-age=3600",
       },
-    })
+    });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to retrieve certificate image" }, { status: 500 })
+    console.error("Error retrieving certificate:", error);
+    return NextResponse.json({ error: "Failed to retrieve certificate image" }, { status: 500 });
   }
 }
