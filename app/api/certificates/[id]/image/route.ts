@@ -4,7 +4,7 @@ import { promises as fs } from "fs";
 import { NextResponse } from "next/server";
 import path from "path";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/auth.config";
+// import { authOptions } from "@/app/api/auth/auth.config";
 
 // Path to the data directory
 const dataDirectory = path.join(process.cwd(), "data");
