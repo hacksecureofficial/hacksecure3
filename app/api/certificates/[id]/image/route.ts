@@ -1,12 +1,10 @@
-// File: app/api/certificates/[id]/image/route.ts
-
 import { promises as fs } from "fs";
 import { NextResponse } from "next/server";
 import path from "path";
-import { getServerSession } from "next-auth/next";
-// import { authOptions } from "@/app/api/auth/auth.config";
+import { getServerSession } from "next-auth/next"; // ✅ No authOptions import
 
-// Path to the data directory
+export const dynamic = "force-dynamic"; // Prevent static generation issues
+
 const dataDirectory = path.join(process.cwd(), "data");
 
 export async function GET(
@@ -14,15 +12,16 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check user session
-    const session = await getServerSession(authOptions);
+    // ✅ Get the session without authOptions
+    const session = await getServerSession();
+
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: certificateId } = params;
 
-    // Read certificates data
+    // 📄 Read certificate data
     const certificateData = await fs.readFile(
       path.join(dataDirectory, "certificates.json"),
       "utf8"
@@ -35,10 +34,13 @@ export async function GET(
     );
 
     if (!certificate) {
-      return NextResponse.json({ error: "Certificate not found or unauthorized" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Certificate not found or unauthorized" },
+        { status: 404 }
+      );
     }
 
-    // Convert base64 to image buffer
+    // 🖼️ Convert base64 image data to buffer
     const imageBuffer = Buffer.from(certificate.imageData, "base64");
 
     return new NextResponse(imageBuffer, {
@@ -48,7 +50,10 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Error retrieving certificate:", error);
-    return NextResponse.json({ error: "Failed to retrieve certificate image" }, { status: 500 });
+    console.error("❌ Error retrieving certificate:", error);
+    return NextResponse.json(
+      { error: "Failed to retrieve certificate image" },
+      { status: 500 }
+    );
   }
 }
